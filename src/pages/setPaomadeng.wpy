@@ -1,0 +1,314 @@
+<template>
+<block>
+    <van-toast id="van-toast" />
+    <view class="header">
+        <view class="back-btn" @tap="navigateBack()">
+            <van-icon custom-class="icon" name="arrow-left" color="#ffffff" size="32rpx" />
+        </view>
+        <view class="title">
+            {{programs_name}}
+        </view>
+    </view>
+    <scroll-view class="container" scroll-y="{{true}}">
+        <view class="form">
+            <view class="form-group">
+                <view class="label">
+                    内容
+                </view>
+                <view class="input">
+                    <view class="input-group" style="width: 100%">
+                        <textarea auto-height="{{ true }}" placeholder="请输入内容" placeholder-class="placeholder" maxlength="-1" @blur="handleContent" />
+                    </view>
+                </view>
+            </view>
+            <view class="form-group">
+                <view class="label">
+                    播放设置
+                </view>
+                <view class="input radio-input">
+                    <van-radio-group custom-class="radio-group" value="{{ playTime }}" @change="handlePlayTime">
+                        <van-radio name="1" custom-class="radio-custom" label-class="radio-label">现在</van-radio>
+                        <van-radio name="2" custom-class="radio-custom" label-class="radio-label">自定义开始时间</van-radio>
+                    </van-radio-group>
+                    <view class="input-group" hidden="{{playTime == 1}}" @tap="handleShowTime(0)">
+                        <view class="placeholder" hidden="{{ start_time }}">请选择播放开始时间</view>
+                        <view class="wrap" hidden="{{ !start_time }}">{{ parse.toDate(start_time) }}</view>
+                    </view>
+                </view>
+            </view>
+            <view class="form-group">
+                <view class="label">
+                    投放终端
+                </view>
+                <view class="input radio-input">
+                    <van-radio-group custom-class="radio-group" value="{{ terminalType }}" @change="handleTerminalType">
+                        <van-radio name="1" custom-class="radio-custom" label-class="radio-label">全部</van-radio>
+                        <van-radio name="2" custom-class="radio-custom" label-class="radio-label">指定设备</van-radio>
+                    </van-radio-group>
+                    <view class="input-group" style="min-height: 100rpx" hidden="{{terminalType == 1}}">
+                        <textarea auto-height="{{ true }}" style="min-height: 100rpx" placeholder="请输入投放终端号，填写格式为网点编号-终端编号,终端编号（多个网点用分号;隔开）" placeholder-class="placeholder" maxlength="-1" @blur="handleTerminal" />
+                        <!-- <input type="digit" placeholder="多个终端用 . 隔开" @blur="handleTerminal" /> -->
+                    </view>
+                </view>
+            </view>
+            <view class="form-group">
+                <view class="label">
+                    时长设置
+                </view>
+                <view class="input">
+                    <view class="input-group" style="width:100%">
+                        <input type="number" placeholder="请输入播放时长/次数(正整数)"  @blur="handleTimes" />
+                    </view>
+                </view>
+            </view>
+            <view class="form-group">
+                <view class="label">
+                    有效日期
+                </view>
+                <view class="input">
+                    <view class="input-group" style="width:100%" @tap="handleShowTime(1)">
+                        <view class="placeholder" hidden="{{ end_time }}">请选择播放有效期</view>
+                        <view class="wrap" hidden="{{ !end_time }}">{{ parse.toDate(end_time) }}</view>
+                    </view>
+                </view>
+            </view>
+        </view>
+    </scroll-view>
+    <view class="set-cont">
+        <button class="save" @tap="scroll" disabled="{{isSaving}}">
+            保存
+            <van-loading wx:if="{{isSaving}}" size="24rpx" color="#fff"/>
+        </button>
+        <button class="cancel" @tap="navigateBack()">
+            取消
+        </button>
+    </view>
+    <van-popup show="{{ showDateTime }}" position="bottom" @close="handleClosePicker">
+        <van-datetime-picker
+            type="datetime"
+            value="{{ date.currentDate }}"
+            min-date="{{ date.minDate }}"
+            @confirm="handleChangeTime"
+            @cancel="handleShowTime"
+            />
+    </van-popup>
+</block>
+</template>
+
+<script>
+import wepy from 'wepy'
+import { scroll } from '../api/api'
+import parse from '../utils/parse.wxs'
+import Toast from '../resources/ui/toast/toast';
+export default class SetPaomadeng extends wepy.page {
+  config = {
+    usingComponents: {
+        'van-icon': '../resources/ui/icon/index',
+        'van-toast': '../resources/ui/toast/index',
+        'van-loading': '../resources/ui/loading/index',
+        'van-radio': '../resources/ui/radio/index',
+        'van-radio-group': '../resources/ui/radio-group/index',
+        'van-transition': '../resources/ui/transition/index',
+        'van-picker': '../resources/ui/picker/index',
+        'van-popup': '../resources/ui/popup/index',
+        'van-datetime-picker': '../resources/ui/datetime-picker/index'
+    }
+  }
+  wxs = {
+    parse: parse
+  }
+  data = {
+    playTime: '1',
+    terminalType: '1',
+    showDateTime: false,
+    showLocation: false,
+    date_type: 0,
+    isSaving: false,
+    date: {
+        minDate: new Date().getTime(),
+        currentDate: new Date().getTime()
+    },
+    name: '',
+    password: '',
+    role: '',
+    content: '',
+    devices_info: 'all',
+    seconds: '',
+    start_time: '',
+    end_time: '',
+    start_time_parse: '',
+    end_time_parse: ''
+  }
+  async scroll() {
+    this.isSaving = true
+    let res = await scroll({
+        name: this.name,
+        password: this.password,
+        role: this.role,
+        devices_info: this.devices_info,
+        start_time: this.start_time || (new Date().getTime() / 1000),
+        end_time: this.end_time,
+        content: this.content,
+        seconds: this.seconds
+    })
+    this.isSaving = false
+    this.$apply()
+    if (res.status == '_0000') {
+        Toast.success('跑马灯设置成功')
+        setTimeout(() => {  
+            wepy.navigateBack({
+                delta: 1
+            })
+        }, 1000)
+    }
+  }
+  onShow() {
+    this.playTime = '1'
+    this.terminalType = '1'
+    this.showDateTime = false
+    this.showLocation = false
+    this.date_type = 0
+    this.isSaving = false
+    this.date = {
+        minDate: new Date().getTime(),
+        currentDate: new Date().getTime()
+    }
+    this.content = ''
+    this.rid = ''
+    this.devices_info = 'all'
+    this.seconds = ''
+    this.start_time = ''
+    this.end_time = ''
+    this.role = JSON.parse(wepy.getStorageSync('_TOKEN')).role
+    this.name = JSON.parse(wepy.getStorageSync('_TOKEN')).name
+    this.password = JSON.parse(wepy.getStorageSync('_TOKEN')).password
+  }
+  methods = {
+    navigateBack() {
+        wepy.navigateBack({
+            delta: 1
+        })
+    },
+    handlePlayTime(e) {
+        this.playTime = e.detail
+        this.$apply()
+    },
+    handleTerminalType(e) {
+        this.terminalType = e.detail
+        if (Number(this.terminalType) === 1) {
+            this.devices_info = 'all'
+        } else {
+            this.devices_info = ''
+        }
+        this.$apply()
+    },
+    handleChangeTime(e) {
+        if (!this.date_type) {
+            this.start_time = e.detail / 1000
+        } else {
+            this.end_time = e.detail / 1000
+        }
+        this.showDateTime = !this.showDateTime
+        this.$apply()
+    },
+    handleShowTime(type) {
+        this.showDateTime = !this.showDateTime
+        this.date_type = Number(type)
+    },
+    handleClosePicker() {
+        this.showDateTime = false
+    },
+    handleContent(e) {
+        this.content = e.detail.value
+    },
+    handleTimes(e) {
+        this.seconds = e.detail.value
+    },
+    handleTerminal(e) {
+        // 网点编号1@终端编号1,终端编号2^网点编号2@终端编号1,终端编号2^网点编号3@终端编号1,终端编号2
+        try{
+            const str = e.detail.value.replace(/；/g, ';')
+            const arr = str.split(';')
+            const devices = []
+            arr.map(item => {
+                const ad = item.replace(/-/g, '@').replace(/，/g, ',')
+                devices.push(ad)
+            })
+            this.devices_info = devices.join('^')
+            console.log(this.devices_info)
+        } catch(e) {
+            Toast('终端格式错误，请重新填写！')
+        }
+    },
+    scroll() {
+        setTimeout(() => {
+            if (Number(this.playTime) === 2 && !this.start_time) {
+                return Toast('开始时间不能为空')
+            }
+            if (Number(this.terminalType) === 2 && !this.devices_info) {
+                return Toast('投放终端不能为空')
+            }
+            if (!this.seconds) {
+                return Toast('时长/次数不能为空')
+            }
+            if (!this.end_time) {
+                return Toast('有效日期不能为空')
+            }
+            if (this.end_time <= this.start_time) {
+                return Toast('有效日期不能小于开始时间')
+            }
+            this.isSaving = true
+            this.scroll()
+        }, 200)
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+page{
+    overflow: hidden;
+}
+.overlay{
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(0,0,0,.4);
+    z-index: 100;
+}
+.picker{
+    position: fixed;
+    width: 100%;
+    bottom: 0;
+    z-index: 101;
+}
+.container{
+    height: 70vh;
+}
+.set-cont{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 80%;
+    margin: 20rpx auto;
+    button{
+        display: block;
+        width: 40%;
+        margin: 50rpx auto 0;
+        background: linear-gradient(90deg, #0335f0, #2488ff);
+        box-shadow: 0 5rpx 10rpx lighten($color: #2488ff, $amount: 10%);
+        height: 90rpx;
+        border-radius: 90rpx;
+        color: #fff;
+        font-size: 32rpx;
+        text-align: center;
+        line-height: 90rpx;
+        &:active{
+            box-shadow: none;
+        }
+    }
+}
+
+</style>

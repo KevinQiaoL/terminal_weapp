@@ -1,0 +1,232 @@
+<template>
+<block>
+    <van-toast id="van-toast" />
+    <view class="header">
+        <view class="back-btn" @tap="navigateBack()">
+            <van-icon custom-class="icon" name="arrow-left" color="#ffffff" size="32rpx" />
+        </view>
+        <view class="title">
+            设置
+        </view>
+    </view>
+    <view class="bar bar-item">
+        <view class="label">
+            <image src="../resources/image/xuanzemoban.png" mode="widthFix"/>
+            选择模板
+        </view>
+    </view>
+    <view class="mode-list">
+        <van-radio-group custom-class="mode-group" value="{{ mode }}" @change="onChange">
+            <repeat for="{{modeList}}" key="index" index="index" item="item">
+                <view class="item">
+                    <view class="img-box">
+                        <image src="{{item.map}}" mode="widthFix" />
+                    </view>
+                    <van-radio name="{{item.mid}}" custom-class="mode-radio" label-class="radio-label">{{item.name}}</van-radio>
+                </view>
+            </repeat>
+            </van-radio-group>
+    </view>
+    <view class="set-cont">
+        <navigator url="/pages/setDetailNext?sid={{sid}}&device_id={{device_id}}&p={{parse.toString(device)}}">
+            下一步
+        </navigator>
+    </view>
+</block>
+</template>
+
+<script>
+import wepy from 'wepy'
+import { screenMode } from '../api/api'
+import parse from '../utils/parse.wxs'
+import Toast from '../resources/ui/toast/toast';
+export default class SetDetail extends wepy.page {
+  config = {
+    usingComponents: {
+        'van-icon': '../resources/ui/icon/index',
+        'van-radio': '../resources/ui/radio/index',
+        'van-toast': '../resources/ui/toast/index',
+        'van-loading': '../resources/ui/loading/index',
+        'van-radio-group': '../resources/ui/radio-group/index'
+    }
+  }
+  wxs = {
+    parse: parse
+  }
+  data = {
+    sid: '',
+    mode: '',
+    modeList: [],
+    step: 1,
+    playList: [],
+    device_id: '',
+    isLoading: false,
+    name: '',
+    password: '',
+    role: '',
+    layoutMap: '',
+    device: null
+  }
+  async screenMode() {
+    let res = await screenMode()
+    if (res.status == '_0000') {
+        this.modeList = res.data
+        this.mode = this.modeList[0].mid
+        this.device = this.modeList[0]
+        this.playList = this.modeList[0].area_list
+        this.$apply()
+    }
+  }
+  onLoad(options) {
+    this.role = JSON.parse(wepy.getStorageSync('_TOKEN')).role
+    this.name = JSON.parse(wepy.getStorageSync('_TOKEN')).name
+    this.password = JSON.parse(wepy.getStorageSync('_TOKEN')).password
+    this.device_id = options.device_id
+    this.sid = options.sid
+    this.screenMode()
+  }
+  methods = {
+    navigateBack() {
+        wepy.navigateBack({
+            delta: 1
+        })
+    },
+    onChange(event) {
+        this.mode = event.detail
+        this.modeList.map(item => {
+            if (this.mode == item.mid){
+                this.device = item
+            }
+        })
+        this.$apply()
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+page{
+    background-image: none;
+}
+.layout{
+    box-sizing: border-box;
+    padding: 20rpx;
+    margin: 30rpx;
+    border-radius: 12rpx;
+    background-color: #fff;
+    box-shadow: 0 5rpx 15rpx rgba(0,0,0,.1);
+    min-height: 128rpx;
+}
+.set-item{
+    box-sizing: border-box;
+    padding: 20rpx;
+    margin: 30rpx;
+    border-radius: 12rpx;
+    background-color: #fff;
+    box-shadow: 0 5rpx 15rpx rgba(0,0,0,.1);
+    height: 128rpx;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    .label{
+        font-size: 24rpx;
+        color: #333;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        width: 100%;
+        flex: 1;
+    }
+    .value{
+        flex: 0 0 55%;
+        width: 55%;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        navigator{
+            margin: 0 0 0 20rpx;
+            background: transparent;
+            font-size: 24rpx;
+            color: #3b83ff;
+            width: auto;
+            padding: 10rpx 20rpx;
+            border-radius: 30rpx;
+            border: 1px solid #3b83ff;
+            &.strong{
+                color: #fff;
+                background: #3b83ff;
+            }
+        }
+    }
+}
+.mode-list{
+    margin: 30rpx;
+    .mode-group{
+        display: flex;
+        flex-wrap: wrap;
+        .item{
+            width: 44%;
+            margin: 2vh 3%;
+            &:nth-child(2n+1){
+                margin-left: 0
+            }
+            &:nth-child(2n){
+                margin-right: 0
+            }
+            .img-box{
+                width: 100%;
+                height: 30vh;
+                overflow: hidden;
+                image{
+                    width: 100%;
+                }
+            }
+            .mode-radio{
+                text-align: center;
+                margin-top: 20rpx;
+            }
+            .radio-label{
+                font-size: 24rpx;
+            }
+        }
+    }
+}
+.set-cont{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 80%;
+    margin: 20rpx auto;
+    navigator{
+        display: block;
+        width: 100%;
+        margin: 50rpx auto 0;
+        background: linear-gradient(90deg, #0335f0, #2488ff);
+        box-shadow: 0 5rpx 10rpx lighten($color: #2488ff, $amount: 10%);
+        height: 90rpx;
+        border-radius: 90rpx;
+        color: #fff;
+        font-size: 32rpx;
+        text-align: center;
+        line-height: 90rpx;
+        &:active{
+            box-shadow: none;
+        }
+    }
+}
+.set-terminal{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 30rpx;
+    .line{
+        color: #3b83ff;
+        margin: 0 20rpx;
+    }
+    .btn{
+        color: #3b83ff;
+        padding: 10rpx 20rpx;
+        font-size: 24rpx;
+    }
+}
+</style>

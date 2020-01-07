@@ -1,0 +1,186 @@
+<template>
+<block>
+    <van-toast id="van-toast" />
+    <view class="header">
+        <view class="back-btn" @tap="navigateBack">
+            <van-icon custom-class="icon" name="arrow-left" color="#ffffff" size="32rpx" />
+        </view>
+        <view class="title">
+            登录
+        </view>
+    </view>
+    <view class="form-horizontal">
+        <view class="form-group" wx:if="{{role == 'station'}}">
+            <view class="icon">
+                <image src="../resources/image/caidianbianhao.png" mode="widthFix"/>
+            </view>
+            <input class="input" type="text" @blur="handleName" placeholder-class="placeholder" placeholder="请输入彩店编号" focus="true"/>
+        </view>
+        <view class="form-group" wx:if="{{role == 'admin'}}">
+            <view class="icon">
+                <image src="../resources/image/shoujihao.png" mode="widthFix"/>
+            </view>
+            <input class="input" type="number" @blur="handleName" placeholder-class="placeholder" placeholder="请输入手机号" focus="true"/>
+        </view>
+        <view class="form-group">
+            <view class="icon">
+                <image src="../resources/image/mima.png" mode="widthFix"/>
+            </view>
+            <input class="input" type="password" @blur="handlePassword" placeholder-class="placeholder" placeholder="请输入密码"/>
+        </view>
+        <view class="help-block" wx:if="{{role == 'admin'}}">
+            <navigator>忘记密码？</navigator>
+        </view>
+        <view class="btn-group">
+            <button class="btn" @tap="navigateByRole" disabled="{{isLoading}}">
+                登录
+                <van-loading wx:if="{{isLoading}}" size="24rpx" color="#fff"/>
+            </button>
+        </view>
+    </view>
+</block>
+</template>
+
+<script>
+import wepy from 'wepy'
+import md5 from '../utils/md5.js'
+import { bindSys } from '../api/api'
+import Toast from '../resources/ui/toast/toast';
+export default class Login extends wepy.page {
+  config = {
+    usingComponents: {
+        'van-icon': '../resources/ui/icon/index',
+        'van-loading': '../resources/ui/loading/index',
+        'van-toast': '../resources/ui/toast/index'
+    }
+  }
+  data = {
+    isLoading: false,
+    role: '',
+    name: '',
+    password: '',
+    version: 1
+  }
+  async bindSys() {
+    const params = {
+        union_id: wepy.getStorageSync('OPENID'),
+        role: this.role,
+        name: this.name,
+        password: md5(this.password),
+        version: 1
+    }
+    let res = await bindSys(params)
+    this.setData({
+        isLoading: false
+    });
+    if (res && res.status && res.status == '_0000') {
+        wepy.setStorageSync('_TOKEN', JSON.stringify({
+            name: res.name,
+            password: res.password,
+            role: res.role
+        }))
+        wepy.reLaunch({
+            url: res.role == 'admin' ? '/pages/shopList' : '/pages/terminalList'
+        })
+    }
+  }
+  onLoad(params) {
+    this.role = params.role
+    this.isLoading = false
+  }
+  methods = {
+    navigateBack() {
+        wepy.navigateBack({
+            delta: 1
+        })
+    },
+    navigateByRole() {
+        this.isLoading = true
+        setTimeout(() => {
+            if (!this.name) {
+                this.isLoading = false;
+                this.$apply()
+                return Toast(`请输入${this.role == 'admin' ? '手机号' : '彩店编号'}！`);
+            }
+            if (!this.password) {
+                this.isLoading = false;
+                this.$apply()
+                return Toast('请输入密码');
+            }
+            this.bindSys()
+        }, 200)
+    },
+    handleName(e) {
+        this.name = e.detail.value
+    },
+    handlePassword(e) {
+        this.password = e.detail.value
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.loading-box{
+    width: 100%;
+    height: 50vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.form-horizontal{
+    box-sizing: border-box;
+    padding: 100rpx 50rpx;
+    width: 100%;
+    .form-group{
+        display: flex;
+        align-items: center;
+        height: 90rpx;
+        border-bottom: 1rpx solid #f0f0f0;
+        .icon{
+            width: 64rpx;
+            height: 48rpx;
+            image{
+                width: 48rpx;
+            }
+        }
+        .input{
+            flex: 1;
+            width: 100%;
+            font-size: 24rpx;
+            color: #333;
+        }
+        .placeholder{
+            color: #999;
+        }
+    }
+    .help-block{
+        text-align: right;
+        font-size: 24rpx;
+        color: #999;
+        line-height: 64rpx;
+    }
+    .btn-group{
+        margin-top: 70rpx;
+        .btn{
+            display: block;
+            width: 100%;
+            margin: 50rpx auto 0;
+            background: linear-gradient(90deg, #0335f0, #2488ff);
+            box-shadow: 0 5rpx 10rpx lighten($color: #2488ff, $amount: 10%);
+            height: 90rpx;
+            border-radius: 90rpx;
+            color: #fff;
+            font-size: 32rpx;
+            text-align: center;
+            line-height: 90rpx;
+            &:active{
+                box-shadow: none;
+            }
+            &:disabled{
+                opacity: .6;
+            }
+        }
+    }
+}
+</style>

@@ -1,0 +1,13 @@
+{
+  "description": "互动多彩-多媒体信息小程序",
+  "setting": {
+    "urlCheck": true,
+    "es6": false,
+    "postcss": false,
+    "minified": false
+  },
+  "compileType": "miniprogram",
+  "appid": "wxc58328bc7857e0d8",
+  "projectname": "mediaweapp",
+  "miniprogramRoot": "./dist"
+}

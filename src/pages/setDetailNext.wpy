@@ -1,0 +1,275 @@
+<template>
+<block>
+    <van-toast id="van-toast" />
+    <view class="header">
+        <view class="back-btn" @tap="navigateBack()">
+            <van-icon custom-class="icon" name="arrow-left" color="#ffffff" size="32rpx" />
+        </view>
+        <view class="title">
+            设置
+        </view>
+    </view>
+    <view class="layout">
+        <image src="{{layoutMap}}" mode="aspectFit" binderror="handleError"/>
+    </view>
+    <repeat for="{{playList}}" key="index" index="index" item="item">
+        <view class="set-item">
+            <view class="label">
+                {{item.name}}<text wx:if="{{item.pid}}">：{{item.programs_name}}</text>
+            </view>
+            <view class="value">
+                <navigator wx:if="{{item.pid}}" class="strong" url="/pages/programList?action=check&pid={{item.pid}}&programs_name={{item.name}}">
+                    查看
+                </navigator>
+                <navigator url="/pages/selectProgram?sid={{sid}}&area={{parse.toString(item)}}&device_id={{device_id}}">
+                    选择节目单
+                </navigator>
+            </view>
+        </view>
+    </repeat>
+    <view class="set-cont">
+        <button class="btn" @tap="saveProgram" disabled="{{isLoading}}">
+            保存
+            <van-loading wx:if="{{isLoading}}" size="24rpx" color="#fff"/>
+        </button>
+    </view>
+</block>
+</template>
+
+<script>
+import wepy from 'wepy'
+import { dispose } from '../api/api'
+import parse from '../utils/parse.wxs'
+import Toast from '../resources/ui/toast/toast';
+export default class SetDetailNext extends wepy.page {
+  config = {
+    usingComponents: {
+        'van-icon': '../resources/ui/icon/index',
+        'van-radio': '../resources/ui/radio/index',
+        'van-toast': '../resources/ui/toast/index',
+        'van-loading': '../resources/ui/loading/index',
+        'van-radio-group': '../resources/ui/radio-group/index'
+    }
+  }
+  wxs = {
+    parse: parse
+  }
+  data = {
+    sid: '',
+    mode: '',
+    modeList: [],
+    playList: [],
+    device_id: '',
+    device: '',
+    isLoading: false,
+    name: '',
+    password: '',
+    role: '',
+    layoutMap: ''
+  }
+  async dispose() {
+    // this.isLoading = true
+    const disArr = []
+    disArr.push(`${this.device_id}^${this.mode}`)
+    let area = []
+    this.playList.map(item => {
+        const a = []
+        a.push(item.id)
+        item.pid && a.push(item.pid)
+        area.push(a.join('*'))
+    })
+    area = area.join('|')
+    disArr.push(area)
+    let res = await dispose({
+        name: this.name,
+        password: this.password,
+        role: this.role,
+        dispose: disArr.join('@')
+    })
+    if (res.status == '_0000') {
+        Toast.success('配置成功')
+        setTimeout(() => {
+            wepy.reLaunch({
+                url: this.role == 'admin' ? '/pages/shopList' : '/pages/terminalList'
+            })
+        }, 500)
+    }
+    this.isLoading = false
+    this.$apply()
+  }
+  onLoad(options) {
+    this.role = JSON.parse(wepy.getStorageSync('_TOKEN')).role
+    this.name = JSON.parse(wepy.getStorageSync('_TOKEN')).name
+    this.password = JSON.parse(wepy.getStorageSync('_TOKEN')).password
+    this.device_id = options.device_id
+    this.sid = options.sid
+    if (options.p) {
+        this.device = JSON.parse(options.p)
+        this.layoutMap = this.device.map
+        this.playList = this.device.area_list
+        this.mode = this.device.mid
+    }
+  }
+  onShow() {
+    const data = this.$parent.globalData.area
+    if (data && data.device_id == this.device_id) {
+        this.playList.map(item => {
+            if (item.id == data.area.id) {
+                item.pid = data.program.pid
+                item.programs_name = data.program.programs_name
+            }
+        })
+        this.$apply()
+    }
+    this.$parent.globalData.area = null
+  }
+  methods = {
+    navigateBack() {
+        wepy.navigateBack({
+            delta: 1
+        })
+    },
+    saveProgram() {
+        let flag = true
+        for (let i = 0; i < this.playList.length; i++) {
+            const item = this.playList[i]
+            if (!item.pid) {
+                flag = false
+                break
+            }
+        }
+        if (!flag) {
+            return Toast('区域节目单未全部设置!')
+        }
+        this.dispose()
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+page{
+    background-image: none;
+}
+.layout{
+    box-sizing: border-box;
+    padding: 20rpx;
+    margin: 30rpx;
+    border-radius: 12rpx;
+    background-color: #fff;
+    box-shadow: 0 5rpx 15rpx rgba(0,0,0,.1);
+    min-height: 128rpx;
+}
+.set-item{
+    box-sizing: border-box;
+    padding: 20rpx;
+    margin: 30rpx;
+    border-radius: 12rpx;
+    background-color: #fff;
+    box-shadow: 0 5rpx 15rpx rgba(0,0,0,.1);
+    height: 128rpx;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    .label{
+        font-size: 24rpx;
+        color: #333;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        width: 100%;
+        flex: 1;
+    }
+    .value{
+        flex: 0 0 50%;
+        width: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        navigator{
+            margin: 0 0 0 20rpx;
+            background: transparent;
+            font-size: 24rpx;
+            color: #3b83ff;
+            width: auto;
+            padding: 10rpx 20rpx;
+            border-radius: 30rpx;
+            border: 1px solid #3b83ff;
+            &.strong{
+                color: #fff;
+                background: #3b83ff;
+            }
+        }
+    }
+}
+.mode-list{
+    margin: 30rpx;
+    .mode-group{
+        display: flex;
+        flex-wrap: wrap;
+        .item{
+            width: 44%;
+            margin: 2vh 3%;
+            &:nth-child(2n+1){
+                margin-left: 0
+            }
+            &:nth-child(2n){
+                margin-right: 0
+            }
+            .img-box{
+                width: 100%;
+                height: 30vh;
+                overflow: hidden;
+                image{
+                    width: 100%;
+                }
+            }
+            .mode-radio{
+                text-align: center;
+                margin-top: 20rpx;
+            }
+            .radio-label{
+                font-size: 24rpx;
+            }
+        }
+    }
+}
+.set-cont{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 80%;
+    margin: 20rpx auto;
+    button{
+        display: block;
+        width: 100%;
+        margin: 50rpx auto 0;
+        background: linear-gradient(90deg, #0335f0, #2488ff);
+        box-shadow: 0 5rpx 10rpx lighten($color: #2488ff, $amount: 10%);
+        height: 90rpx;
+        border-radius: 90rpx;
+        color: #fff;
+        font-size: 32rpx;
+        text-align: center;
+        line-height: 90rpx;
+        &:active{
+            box-shadow: none;
+        }
+    }
+}
+.set-terminal{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 30rpx;
+    .line{
+        color: #3b83ff;
+        margin: 0 20rpx;
+    }
+    .btn{
+        color: #3b83ff;
+        padding: 10rpx 20rpx;
+        font-size: 24rpx;
+    }
+}
+</style>

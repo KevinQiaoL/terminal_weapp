@@ -1,0 +1,274 @@
+<template>
+<block>
+    <van-toast id="van-toast" />
+    <view class="header">
+        <view class="back-btn" @tap="navigateBack()">
+            <van-icon custom-class="icon" name="arrow-left" color="#ffffff" size="32rpx" />
+        </view>
+        <view class="title">
+            <image src="../resources/image/caidian.png" mode="widthFix"/>
+            {{devices_name}}{{devices_no}}
+        </view>
+    </view>
+    <view class="bar bar-item">
+        <view class="label">
+            <image src="../resources/image/tongyongshezhi.png" mode="widthFix"/>
+            模式设置
+        </view>
+        <van-radio-group custom-class="radio-group" value="{{ mode }}" @change="onChange">
+            <van-radio name="1" custom-class="margin" label-class="radio-label">通用</van-radio>
+            <van-radio name="2" label-class="radio-label">数据</van-radio>
+        </van-radio-group>
+    </view>
+    <block wx:if="{{mode == 1}}">
+        <view class="layout">
+            <image src="{{layoutMap}}" mode="aspectFit" binderror="handleError"/>
+        </view>
+        <repeat for="{{playList}}" key="index" index="index" item="item">
+            <view class="set-item">
+                <view class="label">
+                    {{item.area_name}}：{{item.programs_name}}
+                </view>
+                <view class="value">
+                    <navigator class="strong" wx:if="{{item.pid}}" url="/pages/programList?action=check&pid={{item.pid}}&programs_name={{item.programs_name}}">
+                        查看
+                    </navigator>
+                    <navigator url="/pages/selectProgram?sid={{sid}}&device_id={{device_id}}&area={{parse.toString(item)}}">
+                        选择节目单
+                    </navigator>
+                </view>
+            </view>
+        </repeat>
+        <view class="set-cont">
+            <navigator class="btn" url="/pages/setDetail?device_id={{device_id}}&sid={{sid}}">
+                设置
+            </navigator>
+        </view>
+    </block>
+    <view class="set-terminal">
+        <view class="btn">重启</view>
+        <view class="line">|</view>
+        <view class="btn">关机</view>
+    </view>
+</block>
+</template>
+
+<script>
+import wepy from 'wepy'
+import { getTerminalInfo, deviceDataMode, dispose } from '../api/api'
+import parse from '../utils/parse.wxs'
+import Toast from '../resources/ui/toast/toast';
+export default class ProgramList extends wepy.page {
+  config = {
+    usingComponents: {
+        'van-icon': '../resources/ui/icon/index',
+        'van-radio': '../resources/ui/radio/index',
+        'van-radio-group': '../resources/ui/radio-group/index',
+        'van-toast': '../resources/ui/toast/index'
+    }
+  }
+  wxs = {
+    parse: parse
+  }
+  data = {
+    role: '',
+    mode: '',
+    sid: '',
+    device_id: '',
+    name: '',
+    password: '',
+    playList: [],
+    devices_name: '',
+    devices_no: '',
+    layoutMap: '',
+    screen_mode_id: ''
+  }
+  async getTerminalInfo () {
+      let res = await getTerminalInfo({
+          device_id: this.device_id,
+          name: this.name,
+          password: this.password,
+          role: this.role
+      })
+      if (res.status == '_0000') {
+          this.playList = res.data.play_list
+          this.devices_name = res.data.devices_name
+          this.devices_no = res.data.devices_no
+          this.screen_mode_id = res.data.screen_mode_id
+          this.layoutMap = res.data.map
+          this.$apply()
+      }
+  }
+  async deviceDataMode(val) {
+      let res = await deviceDataMode({
+          device_id: this.device_id,
+          name: this.name,
+          password: this.password,
+          role: this.role,
+          mode: val
+      })
+      if (res.status == '_0000') {
+        this.mode = val
+        Toast(`${this.mode == 1 ? '通用' : '数据'}模式设置成功`)
+        this.$apply()
+      }
+  }
+  async dispose() {
+    const disArr = []
+    disArr.push(`${this.device_id}^${this.screen_mode_id}`)
+    let area = []
+    this.playList.map(item => {
+        const a = []
+        a.push(item.screen_area_id)
+        item.pid && a.push(item.pid)
+        area.push(a.join('*'))
+    })
+    area = area.join('|')
+    disArr.push(area)
+    let res = await dispose({
+        name: this.name,
+        password: this.password,
+        role: this.role,
+        dispose: disArr.join('@')
+    })
+    if (res.status == '_0000') {
+        Toast.success('配置成功')
+    }
+  }
+  onLoad(options) {
+    this.role = JSON.parse(wepy.getStorageSync('_TOKEN')).role
+    this.name = JSON.parse(wepy.getStorageSync('_TOKEN')).name
+    this.password = JSON.parse(wepy.getStorageSync('_TOKEN')).password
+    this.device_id = options.device_id
+    this.sid = options.sid
+    this.mode = options.mode
+  }
+  onShow() {
+    const data = this.$parent.globalData.area
+    if (data && data.device_id == this.device_id) {
+        this.playList.map(item => {
+            if (item.screen_area_id == data.area.screen_area_id) {
+                item.pid = data.program.pid
+                item.programs_name = data.program.programs_name
+            }
+        })
+        this.$apply()
+        this.dispose()
+    } else {
+        this.getTerminalInfo()
+    }
+    this.$parent.globalData.area = null
+    console.log(this.$parent.globalData.area)
+  }
+  
+  methods = {
+    navigateBack() {
+        wepy.navigateBack({
+            delta: 1
+        })
+    },
+    onChange(event) {
+        this.deviceDataMode(event.detail)
+    },
+    handleError() {
+        this.layoutMap = '../resources/image/bangding-bg.png'
+        this.$apply()
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+page{
+    background-image: none;
+}
+.layout{
+    box-sizing: border-box;
+    padding: 20rpx;
+    margin: 30rpx;
+    border-radius: 12rpx;
+    background-color: #fff;
+    box-shadow: 0 5rpx 15rpx rgba(0,0,0,.1);
+    min-height: 128rpx;
+}
+.set-item{
+    box-sizing: border-box;
+    padding: 20rpx;
+    margin: 30rpx;
+    border-radius: 12rpx;
+    background-color: #fff;
+    box-shadow: 0 5rpx 15rpx rgba(0,0,0,.1);
+    height: 128rpx;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    .label{
+        font-size: 24rpx;
+        color: #333;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        width: 100%;
+        flex: 1;
+    }
+    .value{
+        flex: 0 0 50%;
+        width: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        navigator{
+            margin: 0 0 0 20rpx;
+            background: transparent;
+            font-size: 24rpx;
+            color: #3b83ff;
+            width: auto;
+            padding: 10rpx 20rpx;
+            border-radius: 30rpx;
+            border: 1px solid #3b83ff;
+            &.strong{
+                color: #fff;
+                background: #3b83ff;
+            }
+        }
+    }
+}
+.set-cont{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 80%;
+    margin: 20rpx auto;
+    .btn{
+        display: block;
+        width: 100%;
+        margin: 50rpx auto 0;
+        background: linear-gradient(90deg, #0335f0, #2488ff);
+        box-shadow: 0 5rpx 10rpx lighten($color: #2488ff, $amount: 10%);
+        height: 90rpx;
+        border-radius: 90rpx;
+        color: #fff;
+        font-size: 32rpx;
+        text-align: center;
+        line-height: 90rpx;
+        &:active{
+            box-shadow: none;
+        }
+    }
+}
+.set-terminal{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 30rpx;
+    .line{
+        color: #3b83ff;
+        margin: 0 20rpx;
+    }
+    .btn{
+        color: #3b83ff;
+        padding: 10rpx 20rpx;
+        font-size: 24rpx;
+    }
+}
+</style>

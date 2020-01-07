@@ -1,0 +1,146 @@
+<template>
+<block>
+    <view class="header">
+        <view class="back-btn" @tap="navigateBack()">
+            <van-icon custom-class="icon" name="arrow-left" color="#ffffff" size="32rpx" />
+        </view>
+        <view class="title">
+            节目单
+        </view>
+    </view>
+    <view class="list">
+        <repeat for="{{programList}}" key="index" index="index" item="item">
+            <navigator class="item" url="/pages/programList?action=set&pid={{item.pid}}&device_id={{device_id}}&area={{area}}&programs_name={{item.name}}">
+                <view class="label">
+                    {{item.name}}
+                </view>
+                <van-icon name="arrow" color="#ddd" size="24rpx"></van-icon>
+            </navigator>
+        </repeat>
+    </view>
+</block>
+</template>
+
+<script>
+import wepy from 'wepy'
+import { programList } from '../api/api'
+export default class SelectProgram extends wepy.page {
+  config = {
+    usingComponents: {
+        'van-icon': '../resources/ui/icon/index'
+    }
+  }
+  data = {
+    pet_name: '',
+    role: '',
+    version: 1,
+    name: '',
+    password: '',
+    device_id: '',
+    area: null,
+    sid: '',
+    page: 0,
+    programList: [],
+    empty: false,
+    ending: false
+  }
+  onLoad(options) {
+    this.role = JSON.parse(wepy.getStorageSync('_TOKEN')).role
+    this.name = JSON.parse(wepy.getStorageSync('_TOKEN')).name
+    this.password = JSON.parse(wepy.getStorageSync('_TOKEN')).password
+    this.pet_name = JSON.parse(wepy.getStorageSync('_TOKEN')).name
+    this.sid = options.sid
+    this.device_id = options.device_id
+    this.area = options.area
+  }
+  onShow() {
+    console.log('进入选择节目单')
+    this.getProgramList()
+  }
+  async getProgramList() {
+    console.log('开始拉取节目单')
+    console.log('page: ' + this.page)
+    let res = await programList({
+        name: this.name,
+        password: this.password,
+        role: this.role,
+        sid: this.sid,
+        page: this.page
+    })
+    console.log('已拉取节目单')
+    this.loading = false
+    if (res && res.status && res.status == '_0000') {
+        this.programList = res.data
+        console.log('已渲染节目单')
+        this.$apply()
+    }
+    console.log(res.data)
+  }
+  async refresh() {
+    let res = await programList({
+        name: this.name,
+        password: this.password,
+        role: this.role,
+        sid: this.sid,
+        page: this.page
+    })
+    wepy.stopPullDownRefresh()
+    this.loading = false
+    if (res && res.status && res.status == '_0000') {
+        this.programList = res.data
+        if (res.data.length === 0 && Number(this.page) === 1) {
+            this.empty = true
+        }
+        if (res.data.length === 0 && this.page > 1) {
+            this.ending = true
+        }
+        this.$apply()
+    }
+  }
+  /* onPullDownRefresh() {
+    this.page = 1
+    this.refresh()
+  } */
+  /* onReachBottom() {
+    if (this.ending || this.empty) { return }
+    this.page++
+    this.getProgramList()
+    console.log('上拉加载下一页')
+  } */
+  methods = {
+    navigateBack() {
+        wepy.navigateBack({
+            delta: 1
+        })
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+page{
+    background-image: none;
+}
+.btn-group{
+    position: absolute;
+    bottom: 60rpx;
+    left: 50rpx;
+    right: 50rpx;
+    .btn{
+        display: block;
+        width: 100%;
+        margin: 50rpx auto 0;
+        background: linear-gradient(90deg, #0335f0, #2488ff);
+        box-shadow: 0 5rpx 10rpx lighten($color: #2488ff, $amount: 10%);
+        height: 90rpx;
+        border-radius: 90rpx;
+        color: #fff;
+        font-size: 32rpx;
+        text-align: center;
+        line-height: 90rpx;
+        &:active{
+            box-shadow: none;
+        }
+    }
+}
+</style>

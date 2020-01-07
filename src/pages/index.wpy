@@ -1,0 +1,131 @@
+<template>
+  <block>
+    <block wx:if="{{!openid || !token}}">
+      <view class="login-bg">
+        <image src="../resources/image/bangding-bg.png"/>
+        <text>请您绑定!</text>
+      </view>
+      <view class="btn-group">
+        <navigator hover-class="btn-active" url="/pages/login?role=station" class="btn">
+          绑定彩店
+        </navigator>
+        <navigator hover-class="btn-active" url="/pages/login?role=admin" class="btn">
+          绑定管理员
+        </navigator>
+      </view>
+    </block>
+    <block wx:else>
+      <view class="empty">
+        <van-loading color="#3b83ff"/>
+      </view>
+    </block>
+
+  </block>
+</template>
+
+<script>
+import wepy from 'wepy'
+import api from '../api/api'
+export default class Index extends wepy.page {
+  config = {
+    usingComponents: {
+        'van-loading': '../resources/ui/loading/index'
+    }
+  }
+  data = {
+    time: 200,
+    openid: null,
+    token: null
+  }
+  async getCode() {
+    const res = await wepy.login()
+    // return console.log(res)
+    const url = 'https://api.weixin.qq.com/sns/jscode2session?appid=' + this.$parent.globalData.appid + '&secret=' + this.$parent.globalData.secret + '&js_code=' + res.code + '&grant_type=authorization_code';
+    let json = await api.getOpenId({
+      code: res.code
+    })
+    wepy.setStorageSync('OPENID', json.openid)
+    let login = await api.loginSys({
+      union_id: json.openid,
+      version: 1
+    })
+    if (login.status == '_0000') { // 已绑定 根据角色进入系统
+      wepy.setStorageSync('_TOKEN', JSON.stringify({
+        name: login.name,
+        password: login.password,
+        role: login.role
+      }))
+      setTimeout(() => {
+        wepy.reLaunch({
+          url: login.role == 'admin' ? '/pages/shopList' : '/pages/terminalList'
+        })
+      }, this.$parent.globalData.time)
+    } else if (login.status == '_1000') { // 未绑定
+      console.log('未绑定')
+    } else {
+      wx.showToast({
+        title: login.message,
+        icon: 'none',
+        duration: 2000
+      })
+    }
+  }
+
+  onShow(options) {
+    let openid = wx.getStorageSync('OPENID')
+    let token = wx.getStorageSync('_TOKEN')
+    this.openid = openid
+    this.token = token
+    if (!openid || !token) {
+      this.getCode()
+    } else {
+      token = JSON.parse(token)
+      setTimeout(() => {
+        wepy.reLaunch({
+          url: token.role == 'admin' ? '/pages/shopList' : '/pages/terminalList'
+        })
+      }, this.$parent.globalData.time)
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+page{
+  padding: 0;
+}
+.login-bg{
+  width: 100%;
+  position: relative;
+  text{
+    position: absolute;
+    color: #fff;
+    font-size: 38rpx;
+    top: 50%;
+    left: 30rpx;
+  }
+  image{
+    width: 100%;
+  }
+}
+.btn-group{
+  width: 100%;
+  margin-top: 120rpx;
+  .btn{
+    display: block;
+    width: 80%;
+    margin: 50rpx auto 0;
+    background: linear-gradient(90deg, #0335f0, #2488ff);
+    box-shadow: 0 5rpx 10rpx lighten($color: #2488ff, $amount: 10%);
+    height: 90rpx;
+    border-radius: 90rpx;
+    color: #fff;
+    font-size: 32rpx;
+    text-align: center;
+    line-height: 90rpx;
+  }
+  .btn-active{
+    box-shadow: none
+  }
+}
+</style>

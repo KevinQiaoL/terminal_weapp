@@ -1,0 +1,149 @@
+<template>
+<block>
+    <view class="header">
+        <view class="back-btn" @tap="navigateBack()">
+            <van-icon custom-class="icon" name="arrow-left" color="#ffffff" size="32rpx" />
+        </view>
+        <view class="title">
+            素材
+        </view>
+    </view>
+    <view class="list">
+        <repeat for="{{resourceList}}" key="index" index="index" item="item">
+            <view class="{{item.checked ? 'item item-select' : 'item'}}" @tap="handleSelectRe({{item}})">
+                <view class="label">
+                    {{item.name}}
+                </view>
+                <view wx:if="{{ item.checked }}">
+                    <van-icon name="success" color="#3b83ff" size="24rpx"></van-icon>
+                </view>
+            </view>
+        </repeat>
+    </view>
+</block>
+</template>
+
+<script>
+import wepy from 'wepy'
+import { resourceList } from '../api/api'
+export default class ResourceList extends wepy.page {
+  config = {
+    usingComponents: {
+        'van-icon': '../resources/ui/icon/index'
+    }
+  }
+  data = {
+    rid: null,
+    page: 1,
+    resourceList: [],
+    empty: false,
+    ending: false
+  }
+  onLoad(options) {
+    if (options.rid) {
+        this.rid = options.rid
+    }
+  }
+  onShow() {
+    this.empty = false
+    this.ending = false
+    this.resourceList = []
+    this.page = 1
+    this.$apply()
+    this.refresh()
+  }
+  async getResourceList() {
+    let res = await resourceList({
+        page: this.page
+    })
+    this.loading = false
+    if (res && res.status && res.status == '_0000') {
+        res.list.map(item => {
+            item.checked = false
+            if (this.rid == item.rid) {
+                item.checked = true
+            }
+        })
+        this.resourceList = this.resourceList.concat(res.list)
+        this.$apply()
+    }
+  }
+  async refresh() {
+    let res = await resourceList({
+        page: this.page
+    })
+    wepy.stopPullDownRefresh()
+    this.loading = false
+    if (res && res.status && res.status == '_0000') {
+        res.list.map(item => {
+            item.checked = false
+            if (this.rid == item.rid) {
+                item.checked = true
+            }
+        })
+        this.resourceList = res.list
+        if (res.list.length === 0 && Number(this.page) === 1) {
+            this.empty = true
+        }
+
+        if (res.list.length === 0 && this.page > 1) {
+            this.ending = true
+        }
+        this.$apply()
+    }
+  }
+  onPullDownRefresh() {
+    this.page = 1
+    this.refresh()
+  }
+  onReachBottom() {
+    if (this.ending || this.empty) { return }
+    this.page++
+    this.getResourceList()
+    console.log('上拉加载下一页')
+  }
+  methods = {
+    navigateBack() {
+        wepy.navigateBack({
+            delta: 1
+        })
+    },
+    handleSelectRe(item) {
+        this.$parent.globalData.resources = item
+        setTimeout(() => {
+            wepy.navigateBack({
+                delta: 1
+            })
+        }, 200)
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+page{
+    background-image: none;
+}
+.btn-group{
+    position: absolute;
+    bottom: 60rpx;
+    left: 50rpx;
+    right: 50rpx;
+    .btn{
+        display: block;
+        width: 100%;
+        margin: 50rpx auto 0;
+        background: linear-gradient(90deg, #0335f0, #2488ff);
+        box-shadow: 0 5rpx 10rpx lighten($color: #2488ff, $amount: 10%);
+        height: 90rpx;
+        border-radius: 90rpx;
+        color: #fff;
+        font-size: 32rpx;
+        text-align: center;
+        line-height: 90rpx;
+        &:active{
+            box-shadow: none;
+        }
+    }
+}
+</style>

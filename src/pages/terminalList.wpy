@@ -1,0 +1,176 @@
+<template>
+<block>
+    <view class="header">
+        <view class="back-btn" @tap="navigateBack()" wx:if="{{role == 'admin'}}">
+            <van-icon custom-class="icon" name="arrow-left" color="#ffffff" size="32rpx" />
+        </view>
+        <view class="title">
+            <image src="../resources/image/caidian.png" mode="widthFix"/>
+            {{pet_name}}
+        </view>
+    </view>
+    <view class="list">
+        <repeat for="{{terminalList}}" key="index" index="index" item="item">
+            <navigator class="item" url="/pages/terminalDetail?device_id={{item.device_id}}&mode={{item.data_mode}}&sid={{sid}}">
+                <view class="label">
+                    {{item.name}}
+                </view>
+                <van-icon name="arrow" color="#ddd" size="24rpx"></van-icon>
+            </navigator>
+        </repeat>
+    </view>
+    <view class="empty" wx:if="{{!terminalList.length}}">
+        <van-icon name="send-gift" color="#eeeeee" size="48rpx"></van-icon>
+        <view class="text">
+            暂无数据
+        </view>
+    </view>
+    <view class="btn-group" wx:if="{{role == 'station'}}">
+        <view class="set-cont">
+            <navigator class="save" url="/pages/setChabo">
+                插播
+            </navigator>
+            <navigator class="cancel" url="/pages/setPaomadeng">
+                跑马灯
+            </navigator>
+        </view>
+        <button class="btn" @tap="handleRelease">
+            解除绑定
+        </button>
+    </view>
+</block>
+</template>
+
+<script>
+import wepy from 'wepy'
+import { getStationList, getTerminalList, cancelBind } from '../api/api'
+export default class TerminalList extends wepy.page {
+  config = {
+    usingComponents: {
+        'van-icon': '../resources/ui/icon/index'
+    }
+  }
+  data = {
+    role: '',
+    pet_name: '',
+    terminalList: [],
+    sid: '',
+    name: '',
+    password: '',
+    times: 0
+  }
+  async getStationList() {
+    let res = await getStationList({
+        name: this.name,
+        password: this.password,
+        role: this.role,
+        version: this.version
+    })
+    if (res && res.status && res.status == '_0000') {
+        res.station_list[0] && (this.sid = res.station_list[0].sid, this.pet_name = res.station_list[0].pet_name)
+        this.getTerminalList()
+    }
+  }
+  async getTerminalList() {
+    let res = await getTerminalList({
+        name: this.name,
+        password: this.password,
+        role: this.role,
+        sid: this.sid
+    })
+    if (res && res.status && res.status == '_0000') {
+        this.terminalList = res.list
+        this.$apply()
+    }
+  }
+  async cancelBind() {
+    let res = await cancelBind({
+        name: this.name,
+        password: this.password,
+        role: this.role,
+        union_id: wepy.getStorageSync('OPENID')
+    })
+    if (res.status == '_0000') {
+        wx.clearStorageSync()
+        setTimeout(() => {
+            wepy.reLaunch({
+                url: '/pages/index'
+            })
+        }, 200)
+    }
+  }
+  onLoad(options) {
+    this.role = JSON.parse(wepy.getStorageSync('_TOKEN')).role
+    this.name = JSON.parse(wepy.getStorageSync('_TOKEN')).name
+    this.password = JSON.parse(wepy.getStorageSync('_TOKEN')).password
+    if (this.role == 'station') {
+        this.getStationList()
+    } else {
+        this.sid = options.sid
+        this.pet_name = options.pet_name
+        this.getTerminalList()
+    }
+    this.times += 1
+  }
+  onShow() {
+    this.times += 1
+    this.times > 2 && this.getTerminalList()
+  }
+  methods = {
+    navigateBack() {
+        wepy.navigateBack({
+            delta: 1
+        })
+    },
+    handleRelease() {
+        this.cancelBind()
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.btn-group{
+    position: absolute;
+    bottom: 60rpx;
+    left: 50rpx;
+    right: 50rpx;
+    .btn{
+        display: block;
+        width: 100%;
+        margin: 50rpx auto 0;
+        background: linear-gradient(90deg, #0335f0, #2488ff);
+        box-shadow: 0 5rpx 10rpx lighten($color: #2488ff, $amount: 10%);
+        height: 90rpx;
+        border-radius: 90rpx;
+        color: #fff;
+        font-size: 32rpx;
+        text-align: center;
+        line-height: 90rpx;
+        &:active{
+            box-shadow: none;
+        }
+    }
+}
+.set-cont{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 20rpx auto;
+    navigator{
+        display: block;
+        width: 45%;
+        background: linear-gradient(90deg, #0335f0, #2488ff);
+        box-shadow: 0 5rpx 10rpx lighten($color: #2488ff, $amount: 10%);
+        height: 90rpx;
+        border-radius: 90rpx;
+        color: #fff;
+        font-size: 32rpx;
+        text-align: center;
+        line-height: 90rpx;
+        &:active{
+            box-shadow: none;
+        }
+    }
+}
+</style>
